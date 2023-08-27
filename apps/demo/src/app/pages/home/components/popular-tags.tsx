@@ -3,10 +3,11 @@ import React from 'react';
 import { getPopularTags } from '../../../services/tag.service';
 
 interface Props {
+  selected: string[];
   updateTag: (tag: string) => void;
 }
 
-export default function PopularTags({ updateTag }: Props) {
+export default function PopularTags({ updateTag, selected }: Props) {
   const { data, isLoading } = useQuery({
     queryKey: ['popularTags'],
     queryFn: () => getPopularTags(),
@@ -28,7 +29,7 @@ export default function PopularTags({ updateTag }: Props) {
             <a
               key={tag}
               href=""
-              className="tag-pill tag-default"
+              className={`tag-pill tag-default ${selected.includes(tag) ? 'tag-primary' : ''}`}
               onClick={event => update(event, tag)}
             >
               {tag}

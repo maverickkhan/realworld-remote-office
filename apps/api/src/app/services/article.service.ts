@@ -5,12 +5,12 @@ import { findUserIdByUsername } from './auth.service';
 import profileMapper from '../utils/profile.utils';
 import articleMapper from '../mappers/article.mapper';
 import { Tag } from '../models/tag.model';
+import { Prisma } from '@prisma/client';
 
 const buildFindAllQuery = (query: any, username: string | undefined) => {
-  const queries: any = [];
+  const queries: Prisma.Enumerable<Prisma.ArticleWhereInput> = [];
   const orAuthorQuery = [];
   const andAuthorQuery = [];
-
   orAuthorQuery.push({
     demo: {
       equals: true,
@@ -46,7 +46,12 @@ const buildFindAllQuery = (query: any, username: string | undefined) => {
     queries.push({
       tagList: {
         some: {
-          name: query.tag,
+          name: {
+            in: decodeURI(query.tag)
+              .split(',')
+              .map((e: string) => e),
+            mode: 'insensitive',
+          },
         },
       },
     });
@@ -63,7 +68,6 @@ const buildFindAllQuery = (query: any, username: string | undefined) => {
       },
     });
   }
-
   return queries;
 };
 
@@ -96,10 +100,14 @@ export const getArticles = async (query: any, username?: string) => {
           followedBy: true,
         },
       },
+      likedBy: true,
+      disLikedBy: true,
       favoritedBy: true,
       _count: {
         select: {
           favoritedBy: true,
+          disLikedBy: true,
+          likedBy: true,
         },
       },
     },
@@ -258,10 +266,14 @@ export const getArticle = async (slug: string, username?: string) => {
           followedBy: true,
         },
       },
+      disLikedBy: true,
+      likedBy: true,
       favoritedBy: true,
       _count: {
         select: {
           favoritedBy: true,
+          disLikedBy: true,
+          likedBy: true,
         },
       },
     },
@@ -561,6 +573,7 @@ export const deleteComment = async (id: number, username: string) => {
 };
 
 export const favoriteArticle = async (slugPayload: string, usernameAuth: string) => {
+  console.log({ slugPayload });
   const user = await findUserIdByUsername(usernameAuth);
 
   const { _count, ...article } = await prisma.article.update({
@@ -589,20 +602,28 @@ export const favoriteArticle = async (slugPayload: string, usernameAuth: string)
         },
       },
       favoritedBy: true,
+      likedBy: true,
+      disLikedBy: true,
       _count: {
         select: {
           favoritedBy: true,
+          disLikedBy: true,
+          likedBy: true,
         },
       },
     },
   });
-
+  console.log(_count);
   const result = {
     ...article,
     author: profileMapper(article.author, usernameAuth),
     tagList: article?.tagList.map((tag: Tag) => tag.name),
     favorited: article.favoritedBy.some((favorited: any) => favorited.id === user?.id),
+    liked: article.likedBy.some((liked: any) => liked.id === user?.id),
+    disliked: article.disLikedBy.some((disliked: any) => disliked.id === user?.id),
     favoritesCount: _count?.favoritedBy,
+    likesCount: _count?.likedBy,
+    dislikesCount: _count?.disLikedBy,
   };
 
   return result;
@@ -637,9 +658,13 @@ export const unfavoriteArticle = async (slugPayload: string, usernameAuth: strin
         },
       },
       favoritedBy: true,
+      disLikedBy: true,
+      likedBy: true,
       _count: {
         select: {
           favoritedBy: true,
+          disLikedBy: true,
+          likedBy: true,
         },
       },
     },
@@ -650,7 +675,255 @@ export const unfavoriteArticle = async (slugPayload: string, usernameAuth: strin
     author: profileMapper(article.author, usernameAuth),
     tagList: article?.tagList.map((tag: Tag) => tag.name),
     favorited: article.favoritedBy.some((favorited: any) => favorited.id === user?.id),
+    liked: article.likedBy.some((liked: any) => liked.id === user?.id),
+    disliked: article.disLikedBy.some((disliked: any) => disliked.id === user?.id),
     favoritesCount: _count?.favoritedBy,
+    likesCount: _count?.likedBy,
+    dislikesCount: _count?.disLikedBy,
+  };
+
+  return result;
+};
+
+export const dislikeArticle = async (slugPayload: string, usernameAuth: string) => {
+  const user = await findUserIdByUsername(usernameAuth);
+
+  const { _count, ...article } = await prisma.article.update({
+    where: {
+      slug: slugPayload,
+    },
+    data: {
+      likedBy: {
+        disconnect: {
+          id: user?.id,
+        },
+      },
+      disLikedBy: {
+        connect: {
+          id: user?.id,
+        },
+      },
+    },
+    include: {
+      tagList: {
+        select: {
+          name: true,
+        },
+      },
+      author: {
+        select: {
+          username: true,
+          bio: true,
+          image: true,
+          followedBy: true,
+        },
+      },
+      favoritedBy: true,
+      disLikedBy: true,
+      likedBy: true,
+      _count: {
+        select: {
+          favoritedBy: true,
+          disLikedBy: true,
+          likedBy: true,
+        },
+      },
+    },
+  });
+
+  const result = {
+    ...article,
+    author: profileMapper(article.author, usernameAuth),
+    tagList: article?.tagList.map((tag: Tag) => tag.name),
+    favorited: article.favoritedBy.some((favorited: any) => favorited.id === user?.id),
+    liked: article.likedBy.some((liked: any) => liked.id === user?.id),
+    disliked: article.disLikedBy.some((disliked: any) => disliked.id === user?.id),
+    favoritesCount: _count?.favoritedBy,
+    likesCount: _count?.likedBy,
+    dislikesCount: _count?.disLikedBy,
+  };
+
+  return result;
+};
+
+export const likedArticle = async (slugPayload: string, usernameAuth: string) => {
+  const user = await findUserIdByUsername(usernameAuth);
+
+  const { _count, ...article } = await prisma.article.update({
+    where: {
+      slug: slugPayload,
+    },
+    data: {
+      likedBy: {
+        connect: {
+          id: user?.id,
+        },
+      },
+      disLikedBy: {
+        disconnect: {
+          id: user?.id,
+        },
+      },
+    },
+    include: {
+      tagList: {
+        select: {
+          name: true,
+        },
+      },
+      author: {
+        select: {
+          username: true,
+          bio: true,
+          image: true,
+          followedBy: true,
+        },
+      },
+      favoritedBy: true,
+      disLikedBy: true,
+      likedBy: true,
+      _count: {
+        select: {
+          favoritedBy: true,
+          disLikedBy: true,
+          likedBy: true,
+        },
+      },
+    },
+  });
+
+  const result = {
+    ...article,
+    author: profileMapper(article.author, usernameAuth),
+    tagList: article?.tagList.map((tag: Tag) => tag.name),
+    favorited: article.favoritedBy.some((favorited: any) => favorited.id === user?.id),
+    liked: article.likedBy.some((liked: any) => liked.id === user?.id),
+    disliked: article.disLikedBy.some((disliked: any) => disliked.id === user?.id),
+    favoritesCount: _count?.favoritedBy,
+    likesCount: _count?.likedBy,
+    dislikesCount: _count?.disLikedBy,
+  };
+
+  return result;
+};
+
+export const deleteDislikeArticle = async (slugPayload: string, usernameAuth: string) => {
+  const user = await findUserIdByUsername(usernameAuth);
+
+  const { _count, ...article } = await prisma.article.update({
+    where: {
+      slug: slugPayload,
+    },
+    data: {
+      // likedBy: {
+      //   disconnect: {
+      //     id: user?.id,
+      //   },
+      // },
+      disLikedBy: {
+        disconnect: {
+          id: user?.id,
+        },
+      },
+    },
+    include: {
+      tagList: {
+        select: {
+          name: true,
+        },
+      },
+      author: {
+        select: {
+          username: true,
+          bio: true,
+          image: true,
+          followedBy: true,
+        },
+      },
+      favoritedBy: true,
+      disLikedBy: true,
+      likedBy: true,
+      _count: {
+        select: {
+          favoritedBy: true,
+          disLikedBy: true,
+          likedBy: true,
+        },
+      },
+    },
+  });
+
+  const result = {
+    ...article,
+    author: profileMapper(article.author, usernameAuth),
+    tagList: article?.tagList.map((tag: Tag) => tag.name),
+    favorited: article.favoritedBy.some((favorited: any) => favorited.id === user?.id),
+    liked: article.likedBy.some((liked: any) => liked.id === user?.id),
+    disliked: article.disLikedBy.some((disliked: any) => disliked.id === user?.id),
+    favoritesCount: _count?.favoritedBy,
+    likesCount: _count?.likedBy,
+    dislikesCount: _count?.disLikedBy,
+  };
+
+  return result;
+};
+
+export const deleteLikeArticle = async (slugPayload: string, usernameAuth: string) => {
+  const user = await findUserIdByUsername(usernameAuth);
+
+  const { _count, ...article } = await prisma.article.update({
+    where: {
+      slug: slugPayload,
+    },
+    data: {
+      likedBy: {
+        disconnect: {
+          id: user?.id,
+        },
+      },
+      // disLikedBy: {
+      //   disconnect: {
+      //     id: user?.id,
+      //   },
+      // },
+    },
+    include: {
+      tagList: {
+        select: {
+          name: true,
+        },
+      },
+      author: {
+        select: {
+          username: true,
+          bio: true,
+          image: true,
+          followedBy: true,
+        },
+      },
+      favoritedBy: true,
+      disLikedBy: true,
+      likedBy: true,
+      _count: {
+        select: {
+          favoritedBy: true,
+          disLikedBy: true,
+          likedBy: true,
+        },
+      },
+    },
+  });
+
+  const result = {
+    ...article,
+    author: profileMapper(article.author, usernameAuth),
+    tagList: article?.tagList.map((tag: Tag) => tag.name),
+    favorited: article.favoritedBy.some((favorited: any) => favorited.id === user?.id),
+    liked: article.likedBy.some((liked: any) => liked.id === user?.id),
+    disliked: article.disLikedBy.some((disliked: any) => disliked.id === user?.id),
+    favoritesCount: _count?.favoritedBy,
+    likesCount: _count?.likedBy,
+    dislikesCount: _count?.disLikedBy,
   };
 
   return result;

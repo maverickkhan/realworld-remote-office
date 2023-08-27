@@ -12,6 +12,10 @@ import {
   getFeed,
   unfavoriteArticle,
   updateArticle,
+  likedArticle,
+  deleteLikeArticle,
+  dislikeArticle,
+  deleteDislikeArticle,
 } from '../services/article.service';
 
 const router = Router();
@@ -221,6 +225,86 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const article = await favoriteArticle(req.params.slug, req.auth?.user?.username as string);
+      res.json({ article });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * Like article
+ * @auth required
+ * @route {POST} /articles/:slug/favorite
+ * @param slug slug of the article (based on the title)
+ * @returns article favorited article
+ */
+router.post(
+  '/articles/:slug/like',
+  auth.required,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const article = await likedArticle(req.params.slug, req.auth?.user?.username as string);
+      res.json({ article });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * dislike article
+ * @auth required
+ * @route {POST} /articles/:slug/favorite
+ * @param slug slug of the article (based on the title)
+ * @returns article favorited article
+ */
+router.post(
+  '/articles/:slug/dislike',
+  auth.required,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const article = await dislikeArticle(req.params.slug, req.auth?.user?.username as string);
+      res.json({ article });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * delete like article
+ * @auth required
+ * @route {POST} /articles/:slug/favorite
+ * @param slug slug of the article (based on the title)
+ * @returns article favorited article
+ */
+router.delete(
+  '/articles/:slug/like',
+  auth.required,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const article = await deleteLikeArticle(req.params.slug, req.auth?.user?.username as string);
+      res.json({ article });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * delete dislike article
+ * @auth required
+ * @route {POST} /articles/:slug/favorite
+ * @param slug slug of the article (based on the title)
+ * @returns article favorited article
+ */
+router.delete(
+  '/articles/:slug/dislike',
+  auth.required,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const article = await deleteLikeArticle(req.params.slug, req.auth?.user?.username as string);
       res.json({ article });
     } catch (error) {
       next(error);

@@ -10,5 +10,9 @@ export interface Article {
   updatedAt: string;
   favorited: boolean;
   favoritesCount: number;
+  disliked: boolean;
+  dislikeCount: number;
+  liked: boolean;
+  likedCount: number;
   author: Author;
 }

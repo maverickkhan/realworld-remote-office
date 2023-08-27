@@ -17,7 +17,8 @@ export default function HomePage() {
   const { user } = useContext(AuthContext);
   const [page, setPage] = useState(1);
   const [tab, setTab] = useState<'global' | 'personal' | 'tag'>(user ? Tab.Personal : Tab.Global);
-  const [activeTag, setActiveTag] = useState<string | undefined>(undefined);
+  const [activeTag, setActiveTag] = useState<string[]>([]);
+
   const { data, isLoading } = useQuery<{ articles: Article[]; articlesCount: number }>({
     queryKey: ['articles', 'home', tab, activeTag, page],
     queryFn: ({ signal }) => {
@@ -26,7 +27,7 @@ export default function HomePage() {
       } else if (tab === Tab.Personal) {
         return getPersonalFeed({ offset: (page - 1) * 10 }, signal);
       } else {
-        return getArticles({ offset: (page - 1) * 10, tag: activeTag }, signal);
+        return getArticles({ offset: (page - 1) * 10, tag: activeTag.join(',') }, signal);
       }
     },
   });
@@ -38,8 +39,12 @@ export default function HomePage() {
   }
 
   function updateTag(tag: string): void {
-    setActiveTag(tag);
-    setTab(Tab.Tag);
+    const newTags = activeTag?.includes(tag)
+      ? activeTag.filter(i => i !== tag)
+      : [...activeTag, tag];
+    setActiveTag(newTags);
+    if (newTags.length) setTab(Tab.Tag);
+    else setTab(Tab.Global);
     setPage(1);
   }
 
@@ -86,7 +91,7 @@ export default function HomePage() {
                       href=""
                       onClick={event => switchTab(Tab.Tag, event)}
                     >
-                      #{activeTag}
+                      {activeTag.join(' + ')}
                     </a>
                   </li>
                 )}
@@ -110,7 +115,7 @@ export default function HomePage() {
           </div>
 
           <div className="col-md-3">
-            <PopularTags updateTag={updateTag} />
+            <PopularTags selected={activeTag} updateTag={updateTag} />
           </div>
         </div>
       </div>

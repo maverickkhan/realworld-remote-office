@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import FollowButton from '../../../components/follow-button';
 import { deleteArticle } from '../../../services/article.service';
 import FavoriteButton from '../../../components/favorite-button';
+import LikeButton from '../../../components/like-button';
 import { AuthContext } from '../../../auth/auth.context';
 
 interface Props {
@@ -54,7 +55,10 @@ export default function ArticleActions({ article }: Props) {
           slug={article.slug}
         />
         &nbsp;
-        <FavoriteButton article={article} isExtended={true} />
+        <div style={{ display: 'flex', float: 'right' }}>
+          <FavoriteButton article={article} isExtended={true} />
+          <LikeButton article={article} />
+        </div>
       </>
     );
   }
